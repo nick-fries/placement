@@ -16,7 +16,6 @@
 
 """Fixtures for Placement tests."""
 
-
 from oslo_config import cfg
 from oslo_db.sqlalchemy import test_fixtures
 
@@ -29,8 +28,15 @@ from placement.objects import trait
 
 class Database(test_fixtures.GeneratesSchema, test_fixtures.AdHocDbFixture):
     def __init__(self, conf_fixture, set_config=False):
-        """Create a database fixture."""
-        super(Database, self).__init__()
+        """Create a database fixture.
+
+        :param conf_fixture: An oslo_config fixture.Config object.
+        :param set_config: If True, register the placement_database connection
+            option on conf_fixture when it is not already configured,
+            defaulting to in-memory ``sqlite://``. The AdHocDbFixture base is
+            always initialized with
+            ``conf_fixture.conf.placement_database.connection``.
+        """
         if set_config:
             try:
                 conf_fixture.register_opt(
@@ -38,8 +44,16 @@ class Database(test_fixtures.GeneratesSchema, test_fixtures.AdHocDbFixture):
             except cfg.DuplicateOptError:
                 # already registered
                 pass
-            conf_fixture.config(connection='sqlite://',
-                                group='placement_database')
+            # Do not overwrite a connection set by a subclass hook (e.g.
+            # Nova functional tests use file-backed SQLite in threading).
+            if not conf_fixture.conf.placement_database.connection:
+                conf_fixture.config(connection='sqlite://',
+                                    group='placement_database')
+
+        connection = conf_fixture.conf.placement_database.connection
+
+        super().__init__(url=connection)
+
         self.conf_fixture = conf_fixture
         self.get_engine = placement_db.get_placement_engine
         placement_db.configure(self.conf_fixture.conf)

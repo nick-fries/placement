@@ -60,6 +60,11 @@ class PlacementFixture(fixtures.Fixture):
         self.conf_fixture = conf_fixture
         self.register_opts = register_opts
 
+    def _configure_placement(self, conf_fixture):
+        """Allow subclasses to modify config options after the config
+        fixture is initialized and the placement options are registered.
+        """
+
     def setUp(self):
         super(PlacementFixture, self).setUp()
         if not self.conf_fixture:
@@ -67,6 +72,8 @@ class PlacementFixture(fixtures.Fixture):
             self.conf_fixture = self.useFixture(config_fixture.Config(config))
         if self.register_opts:
             conf.register_opts(self.conf_fixture.conf)
+
+        self._configure_placement(self.conf_fixture)
 
         if self.db:
             self.useFixture(db_fixture.Database(self.conf_fixture,
